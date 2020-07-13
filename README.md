@@ -1,6 +1,8 @@
 # matrix-nio-send
 
 - simple but convenient app to send Matrix messages
+- it uses the matrix-nio SDK, hence the name matrix-nio-send,
+  see https://github.com/poljar/matrix-nio/
 
 ## Summary 
 
