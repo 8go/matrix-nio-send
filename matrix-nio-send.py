@@ -12,11 +12,11 @@
 - simple but convenient app to send Matrix messages
 - it uses the matrix-nio SDK, hence the name matrix-nio-send
 
-## Summary 
+## Summary
 
 This program is a simple but convenient app to send Matrix
 messages. It is a CLI program to be be used from the command line.
-There is no GUI and windows. 
+There is no GUI and windows.
 
 Use cases for this program could be
 a) a bot or part of a bot,
@@ -65,7 +65,7 @@ $HOME/.config/matrix-nio-send.py/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
-credentials file. 
+credentials file.
 
 In summary, TLDR: first run sets everything up, thereafter it can
 be used to easily publish messages.
@@ -341,7 +341,11 @@ async def main() -> None:
 
 
 async def send_message(client, room_id, message):
-    content = {"msgtype": "m.text"}
+    if pargs.notice:
+        content = {"msgtype": "m.notice"}
+    else:
+        content = {"msgtype": "m.text"}
+
     if pargs.code:
         logger.debug("Sending message in format \"code\".")
         formatted_message = "<pre><code>" + message + "</code></pre>"
@@ -516,6 +520,10 @@ if __name__ == "__main__":
                     "useful for sending ASCII-art or tabbed output "
                     "like tables as a fixed-sized font will be used "
                     "for display.")
+    # -n already used for --markdown, -e for "noticE"
+    ap.add_argument("-e", "--notice", required=False,
+                    action="store_true", help="Send message as notice. "
+                    "If not specified, message will be sent as text.")
     pargs = ap.parse_args()
     if pargs.debug:
         # set log level on root logger
