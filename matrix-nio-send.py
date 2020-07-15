@@ -10,13 +10,14 @@
 # matrix-nio-send
 
 - simple but convenient app to send Matrix messages
-- it uses the matrix-nio SDK, hence the name matrix-nio-send
+- it uses the matrix-nio SDK, hence the name matrix-nio-send,
+  see https://github.com/poljar/matrix-nio/
 
-## Summary 
+## Summary
 
 This program is a simple but convenient app to send Matrix
 messages. It is a CLI program to be be used from the command line.
-There is no GUI and windows. 
+There is no GUI and windows.
 
 Use cases for this program could be
 a) a bot or part of a bot,
@@ -65,7 +66,7 @@ $HOME/.config/matrix-nio-send.py/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
-credentials file. 
+credentials file.
 
 In summary, TLDR: first run sets everything up, thereafter it can
 be used to easily publish messages.
@@ -389,17 +390,27 @@ async def send_messages(client, room_id):
 
     if (not select.select([sys.stdin, ], [], [], 0.0)[0]) and (
             not pargs.message):
-        # nothing is piped into program from stdin, and
+        # stdin is not ready and
         # no message is provided in command line
-        logger.debug("No input on stdin. Nothing is being "
-                     "piped into this program. No input in command line.")
-        # nothing is piped into program from stdin, no -m in CLI
-        # we read message from keyboard, print a prompt on stdout
+        # Could mean: nothing is piped into program from stdin
+        logger.debug("stdin is not ready. "
+                     "No input in command line.")
+        # stdin not ready, no -m in CLI
         # A pipe could be used, but it could be empty.
         if not sys.stdin.isatty():
-            logger.debug("Pipe was used, but pipe is empty."
-                         "Setting message to empty string.")
-            message = ""
+            logger.debug("Pipe was used, but pipe might empty. "
+                         "Trying to read from pipe anyway.")
+            try:
+                message = ""
+                for line in sys.stdin:
+                    message += line
+                logger.debug("Using data from stdin pipe as message.")
+            except EOFError:  # EOF when reading a line
+                logger.debug("A pipe was used, but the pipe was empty. "
+                             "Setting message to empty string.")
+                # EOF in pipe means an empty message should be sent
+                message = ""
+            await send_message(client, room_id, message)
             return
         # If we reach this, no pipe was used, but we continue with
         # defensive programming. If stdin returns EOF we will
@@ -407,7 +418,154 @@ async def send_messages(client, room_id):
         logger.debug("Reading message from keyboard")
         try:
             message = input("Enter message to send: ")
-            # print("Message was sent.")
+        except EOFError:  # EOF when reading a line
+            print("")  # input leaves stdout without newline
+            logger.debug("A pipe was used, but the pipe was empty. "
+                         "Setting message to empty string.")
+            # EOF in pipe means an empty message should be sent
+            message = ""
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+            return
+        await send_message(client, room_id, message)
+        return
+
+        logger.debug("Sending message in format \"html\".")
+        formatted_message = message  # the same for the time being
+        content["format"] = "org.matrix.custom.html"  # add to dict
+        content["formatted_body"] = formatted_message
+    else:
+        logger.debug("Sending message in format \"text\".")
+    content["body"] = message
+
+    if message == "" or message == "\n":
+        logger.debug(
+            "The message is empty. "
+            "This message is being droppend and NOT sent.")
+    else:
+        try:
+            await client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content=content
+            )
+            logger.debug(f"This message was sent: \"{message}\"")
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+
+
+async def send_messages(client, room_id):
+    if pargs.room:
+        room_id = pargs.room.replace(r'\!', '!')  # remove possible escape
+        logger.debug("Room id was provided via command line. "
+                     "Overwriting room id from credentials file "
+                     f"with room id \"{room_id}\" "
+                     "from command line.")
+
+    if (not select.select([sys.stdin, ], [], [], 0.0)[0]) and (
+            not pargs.message):
+        # stdin is not ready and
+        # no message is provided in command line
+        # Could mean: nothing is piped into program from stdin
+        logger.debug("stdin is not ready. "
+                     "No input in command line.")
+        # stdin not ready, no -m in CLI
+        # A pipe could be used, but it could be empty.
+        if not sys.stdin.isatty():
+            logger.debug("Pipe was used, but pipe might empty. "
+                         "Trying to read from pipe anyway.")
+            try:
+                message = ""
+                for line in sys.stdin:
+                    message += line
+                logger.debug("Using data from stdin pipe as message.")
+            except EOFError:  # EOF when reading a line
+                logger.debug("A pipe was used, but the pipe was empty. "
+                             "Setting message to empty string.")
+                # EOF in pipe means an empty message should be sent
+                message = ""
+            await send_message(client, room_id, message)
+            return
+        # If we reach this, no pipe was used, but we continue with
+        # defensive programming. If stdin returns EOF we will
+        # catch it and send an empty msg.
+        logger.debug("Reading message from keyboard")
+        try:
+            message = input("Enter message to send: ")
+        except EOFError:  # EOF when reading a line
+            print("")  # input leaves stdout without newline
+            logger.debug("A pipe was used, but the pipe was empty. "
+                         "Setting message to empty string.")
+            # EOF in pipe means an empty message should be sent
+            message = ""
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+            return
+        await send_message(client, room_id, message)
+        return
+
+        logger.debug("Sending message in format \"html\".")
+        formatted_message = message  # the same for the time being
+        content["format"] = "org.matrix.custom.html"  # add to dict
+        content["formatted_body"] = formatted_message
+    else:
+        logger.debug("Sending message in format \"text\".")
+    content["body"] = message
+
+    if message == "" or message == "\n":
+        logger.debug(
+            "The message is empty. "
+            "This message is being droppend and NOT sent.")
+    else:
+        try:
+            await client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content=content
+            )
+            logger.debug(f"This message was sent: \"{message}\"")
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+
+
+async def send_messages(client, room_id):
+    if pargs.room:
+        room_id = pargs.room.replace(r'\!', '!')  # remove possible escape
+        logger.debug("Room id was provided via command line. "
+                     "Overwriting room id from credentials file "
+                     f"with room id \"{room_id}\" "
+                     "from command line.")
+
+    if (not select.select([sys.stdin, ], [], [], 0.0)[0]) and (
+            not pargs.message):
+        # stdin is not ready and
+        # no message is provided in command line
+        # Could mean: nothing is piped into program from stdin
+        logger.debug("stdin is not ready. "
+                     "No input in command line.")
+        # stdin not ready, no -m in CLI
+        # A pipe could be used, but it could be empty.
+        if not sys.stdin.isatty():
+            logger.debug("Pipe was used, but pipe might empty. "
+                         "Trying to read from pipe anyway.")
+            try:
+                message = ""
+                for line in sys.stdin:
+                    message += line
+                logger.debug("Using data from stdin pipe as message.")
+            except EOFError:  # EOF when reading a line
+                logger.debug("A pipe was used, but the pipe was empty. "
+                             "Setting message to empty string.")
+                # EOF in pipe means an empty message should be sent
+                message = ""
+            await send_message(client, room_id, message)
+            return
+        # If we reach this, no pipe was used, but we continue with
+        # defensive programming. If stdin returns EOF we will
+        # catch it and send an empty msg.
+        logger.debug("Reading message from keyboard")
+        try:
+            message = input("Enter message to send: ")
         except EOFError:  # EOF when reading a line
             print("")  # input leaves stdout without newline
             logger.debug("A pipe was used, but the pipe was empty. "
@@ -429,7 +587,6 @@ async def send_messages(client, room_id):
             message += line
         logger.debug("Using data from stdin pipe as message.")
         await send_message(client, room_id, message)
-        logger.debug("Message was sent.")
 
     # now go thru command line and send all --message messages
     if pargs.message:
@@ -438,7 +595,6 @@ async def send_messages(client, room_id):
                 "Message was provided with --message argument. "
                 f"Message is \"{message}\".")
             await send_message(client, room_id, message)
-            logger.debug("Message was sent.")
 
 
 if __name__ == "__main__":
@@ -530,3 +686,5 @@ if __name__ == "__main__":
         sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(1)
+
+# EOF
