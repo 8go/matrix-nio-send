@@ -4,11 +4,11 @@
 - it uses the matrix-nio SDK, hence the name matrix-nio-send,
   see https://github.com/poljar/matrix-nio/
 
-## Summary 
+## Summary
 
 This program is a simple but convenient app to send Matrix
 messages. It is a CLI program to be be used from the command line.
-There is no GUI and windows. 
+There is no GUI and windows.
 
 Use cases for this program could be
 a) a bot or part of a bot,
@@ -57,7 +57,7 @@ $HOME/.config/matrix-nio-send.py/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
-credentials file. 
+credentials file.
 
 In summary, TLDR: first run sets everything up, thereafter it can
 be used to easily publish messages.
@@ -145,6 +145,9 @@ optional arguments:
                         priority. This is useful for sending ASCII-art or
                         tabbed output like tables as a fixed-sized font will
                         be used for display.
+  -e, --notice          Send message as notice instead of text by changing
+                        the "msgtype" parameter in the content of the message.
+                        If not specified, message will be sent text.
 ```
 
 ## For Developers

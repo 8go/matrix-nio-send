@@ -155,6 +155,8 @@ optional arguments:
                         priority. This is useful for sending ASCII-art or
                         tabbed output like tables as a fixed-sized font will
                         be used for display.
+  -e, --notice          Send message as notice instead of text. If not specified,
+                        message will be sent as text.
 ```
 
 ## For Developers
