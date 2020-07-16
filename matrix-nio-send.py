@@ -342,7 +342,11 @@ async def main() -> None:
 
 
 async def send_message(client, room_id, message):
-    content = {"msgtype": "m.text"}
+    if pargs.notice:
+        content = {"msgtype": "m.notice"}
+    else:
+        content = {"msgtype": "m.text"}
+
     if pargs.code:
         logger.debug("Sending message in format \"code\".")
         formatted_message = "<pre><code>" + message + "</code></pre>"
@@ -524,6 +528,10 @@ if __name__ == "__main__":
                     "useful for sending ASCII-art or tabbed output "
                     "like tables as a fixed-sized font will be used "
                     "for display.")
+    # -n already used for --markdown, -e for "noticE"
+    ap.add_argument("-e", "--notice", required=False,
+                    action="store_true", help="Send message as notice. "
+                    "If not specified, message will be sent as text.")
     pargs = ap.parse_args()
     if pargs.debug:
         # set log level on root logger
