@@ -402,18 +402,18 @@ async def send_messages(client, room_id):
         # stdin not ready, no -m in CLI
         # A pipe could be used, but it could be empty.
         if not sys.stdin.isatty():
-            logger.debug("Pipe was used, but pipe might empty. "
+            logger.debug("Pipe was used, but pipe might be empty. "
                          "Trying to read from pipe anyway.")
+            message = ""
             try:
-                message = ""
                 for line in sys.stdin:
                     message += line
                 logger.debug("Using data from stdin pipe as message.")
             except EOFError:  # EOF when reading a line
                 logger.debug("A pipe was used, but the pipe was empty. "
                              "Setting message to empty string.")
-                # EOF in pipe means an empty message should be sent
-                message = ""
+                # EOF, this usually happens only when pipe was empty
+                # message is already set to ""
             await send_message(client, room_id, message)
             return
         # If we reach this, no pipe was used, but we continue with
@@ -426,7 +426,7 @@ async def send_messages(client, room_id):
             print("")  # input leaves stdout without newline
             logger.debug("A pipe was used, but the pipe was empty. "
                          "Setting message to empty string.")
-            # EOF in pipe means an empty message should be sent
+            # EOF in input means an empty message should be sent
             message = ""
         except Exception:
             traceback.print_exc(file=sys.stdout)
