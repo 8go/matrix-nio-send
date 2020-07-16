@@ -296,10 +296,10 @@ async def main() -> None:
             homeserver = "https://" + homeserver
         user_id = "@user:example.org"
         user_id = input(f"Enter your full user ID: [{user_id}] ")
-        device_name = "os.path.basename(__file__)"
+        device_name = os.path.basename(__file__)
         device_name = input(f"Choose a name for this device: [{device_name}] ")
         if device_name == "":
-            device_name = "os.path.basename(__file__)" # default
+            device_name = os.path.basename(__file__) # default
         room_id = "!SomeRoomIdString:example.org"
         room_id = input(f"Enter your room ID: [{room_id}] ")
         client = AsyncClient(homeserver, user_id)
