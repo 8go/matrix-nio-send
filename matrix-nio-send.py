@@ -2,7 +2,7 @@
 
 # pylama:ignore=W605
 
-"""matrix-nio-send.py
+"""matrix-nio-send.py.
 
 0123456789012345678901234567890123456789012345678901234567890123456789012345678
 0000000000111111111122222222223333333333444444444455555555556666666666777777777
@@ -26,7 +26,10 @@ c) combine it with cron to publish periodic data,
 d) send yourself daily/weekly reminders via a cron job
 e) a trivial way to fire off some instant messages from the command line
 f) to automate sending via programs and scripts
-
+g) a "blogger" who frequently sends messages and images to the same
+   room(s) could use it
+h) a person could write a diary or run a gratitutde journal by
+   sending messages to her/his own room
 
 This program on the first run creates a credentials.json file.
 The credentials.json file stores: homeserver, user id,
@@ -108,12 +111,15 @@ $ matrix-nio-send.py --debug # turn debugging on
 $ matrix-nio-send.py --help # print help
 
 usage: matrix-nio-send.py [-h] [-d] [-t CREDENTIALS] [-r ROOM]
-                              [-m MESSAGE [MESSAGE ...]] [-w] [-n] [-c]
+                          [-m MESSAGE [MESSAGE ...]] [-i IMAGE [IMAGE ...]]
+                          [-a AUDIO [AUDIO ...]] [-f FILE [FILE ...]] [-w]
+                          [-z] [-c] [-p SPLIT] [-k CONFIG] [-n] [-e]
+                          [-s STORE]
 
-On first run this program will configure itself. On further runs this
-program implements a simple Matrix sender. It sends one or multiple text
-message to a Matrix room. The messages can be of format "text", "html",
-"markdown" or "code".matrix-nio must be installed.
+On first run this program will configure itself. On further runs this program
+implements a simple Matrix sender. It sends one or multiple text message to a
+Matrix room. The messages can be of format "text", "html", "markdown" or
+"code".matrix-nio must be installed.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -124,39 +130,73 @@ optional arguments:
                         By default, this file is "credentials.json". On
                         further runs the credentials file is read to permit
                         logging into the correct Matrix account and sending
-                        messages to the preconfigured room. If this option
-                        is provided, the provided file name will be used as
+                        messages to the preconfigured room. If this option is
+                        provided, the provided file name will be used as
                         credentials file instead of the default one.
   -r ROOM, --room ROOM  Send to this room. Usually the room is provided in
                         credentials file. If provided it will use this room
                         instead the one from the credentials file. The user
                         must have access to the specified room in order to
                         send messages there. Messages cannot be sent to
-                        arbitrary rooms.
+                        arbitrary rooms. When specifying the room id some
+                        shells require the exclamation mark to be escaped
+                        with a blackslash.
   -m MESSAGE [MESSAGE ...], --message MESSAGE [MESSAGE ...]
                         Send this message. If not specified, and no input
                         piped in from stdin, then message will be read from
-                        stdin, i.e. keyboard.This option can be used
-                        multiple time to send multiple messages. If there is
-                        data is piped into this program, then first data
-                        from the pipe is published, then messages from this
-                        option are published.
+                        stdin, i.e. keyboard.This option can be used multiple
+                        time to send multiple messages. If there is data is
+                        piped into this program, then first data from the
+                        pipe is published, then messages from this option are
+                        published.
+  -i IMAGE [IMAGE ...], --image IMAGE [IMAGE ...]
+                        Send this image.This option can be used multiple time
+                        to send multiple images. First images are send, then
+                        text messages are send.
+  -a AUDIO [AUDIO ...], --audio AUDIO [AUDIO ...]
+                        Send this audio file.This option can be used multiple
+                        time to send multiple audio files. First audios are
+                        send, then text messages are send.
+  -f FILE [FILE ...], --file FILE [FILE ...]
+                        Send this file (e.g. PDF, DOC).This option can be
+                        used multiple time to send multiple files. First
+                        files are send, then text messages are send.
   -w, --html            Send message as format "HTML". If not specified,
                         message will be sent as format "TEXT". E.g. that
                         allows some text to be bold, etc. Only a subset of
                         HTML tags are accepted by Matrix.
-  -n, --markdown        Send message as format "MARKDOWN". If not specified,
+  -z, --markdown        Send message as format "MARKDOWN". If not specified,
                         message will be sent as format "TEXT". E.g. that
-                        allows sending of text formated in MarkDown
-                        language.
+                        allows sending of text formated in MarkDown language.
   -c, --code            Send message as format "CODE". If not specified,
-                        message will be sent as format "TEXT". If both
-                        --html and --code are specified then --code takes
-                        priority. This is useful for sending ASCII-art or
-                        tabbed output like tables as a fixed-sized font will
-                        be used for display.
-  -e, --notice          Send message as notice instead of text. If not specified,
-                        message will be sent as text.
+                        message will be sent as format "TEXT". If both --html
+                        and --code are specified then --code takes priority.
+                        This is useful for sending ASCII-art or tabbed output
+                        like tables as a fixed-sized font will be used for
+                        display.
+  -p SPLIT, --split SPLIT
+                        If set, split the message(s) into multiple messages
+                        wherever the string specified with --split
+                        occurs.E.g. One pipes a stream of RSS articles into
+                        the program and the articles are separated by three
+                        newlines. Then with --split set to "\n\n\n" each
+                        article will be printed in a separate message.By
+                        default, i.e. if not set, no messages will be split.
+  -k CONFIG, --config CONFIG
+                        Location of a config file. By default, no config file
+                        is used. If this option is provided, the provided
+                        file name will be used to read configuration from.
+  -n, --notice          Send message as notice. If not specified, message
+                        will be sent as text.
+  -e, --encrypted       Send message end-to-endencrypted. If not specified,
+                        message will be sent unencrypted.
+  -s STORE, --store STORE
+                        Path to directory to be used as "store" for encrypted
+                        messaging.Must be specified if -e is used. By
+                        default, this directory is "store". It is not needed
+                        for unencrypted messaging.If this option is provided,
+                        the provided directory name will be used as store
+                        directory instead of the default one.
 ```
 
 ## For Developers
@@ -173,7 +213,6 @@ optional arguments:
 
 ## Things to do, things missing
 
-- associating public name with session id
 - adding end-to-end encryption, ee2e
 
 ## Final Remarks
@@ -198,12 +237,15 @@ from markdown import markdown
 from nio import AsyncClient, LoginResponse
 
 CREDENTIALS_FILE_DEFAULT = "credentials.json"
+STORE_DIR_DEFAULT = "store"
 
 
 def write_credentials_to_disk(homeserver, user_id, device_id, access_token,
                               room_id, credentials_file) -> None:
-    """Writes the required login details to disk so we can log in
-    later without using a password.
+    """Write the required login details to disk.
+
+    This file can later be used for logging in
+    without using a password.
 
     Arguments:
         homeserver -- URL of homeserver,
@@ -238,8 +280,9 @@ def write_credentials_to_disk(homeserver, user_id, device_id, access_token,
 
 
 def read_credentials_from_disk(credentials_file) -> None:
-    """Reads the required login details from disk so we can log in
-    without using a password.
+    """Read the required login details from disk.
+
+    It can then be used to log in without using a password.
 
     Arguments:
         credentials_file -- name/path of file to read
@@ -251,7 +294,7 @@ def read_credentials_from_disk(credentials_file) -> None:
 
 
 async def main() -> None:
-    """ main:
+    """Main function
 
     This function check if a credentials file exists. If no, it will ask
     user questions regrading login, store the info in a newly created
@@ -301,7 +344,7 @@ async def main() -> None:
         device_name = os.path.basename(__file__)
         device_name = input(f"Choose a name for this device: [{device_name}] ")
         if device_name == "":
-            device_name = os.path.basename(__file__) # default
+            device_name = os.path.basename(__file__)  # default
         room_id = "!SomeRoomIdString:example.org"
         room_id = input(f"Enter your room ID: [{room_id}] ")
         client = AsyncClient(homeserver, user_id)
@@ -479,7 +522,7 @@ if __name__ == "__main__":
     ap.add_argument("-d", "--debug", required=False,
                     action="store_true", help="Print debug information")
     # -c is already used for --code, -t as abbreviation for "trust"
-    ap.add_argument("-t", "--credentials", required=False,
+    ap.add_argument("-t", "--credentials", required=False, type=str,
                     default=CREDENTIALS_FILE_DEFAULT,
                     help="On first run, information about homeserver, "
                     "user, room id, etc. will be written to a credentials "
@@ -491,7 +534,7 @@ if __name__ == "__main__":
                     "If this option is provided, the provided file name "
                     "will be used as credentials file instead of the "
                     "default one. ")
-    ap.add_argument("-r", "--room", required=False,
+    ap.add_argument("-r", "--room", required=False, type=str,
                     help="Send to this room. Usually the room is provided "
                     "in credentials file. If provided it will use this "
                     "room instead the one from the credentials file. "
@@ -501,8 +544,8 @@ if __name__ == "__main__":
                     "room id some shells require the exclamation mark "
                     "to be escaped with a blackslash.")
     # allow multiple messages , e.g. -m "m1" "m2" or -m "m1" -m "m2"
-    # messages is going to be a list of strings
-    # e.g. messages=[ 'm1', 'm2' ]
+    # message is going to be a list of strings
+    # e.g. message=[ 'm1', 'm2' ]
     ap.add_argument("-m", "--message", required=False,
                     action="extend", nargs="+", type=str,
                     help="Send this message. If not specified, and no "
@@ -513,6 +556,36 @@ if __name__ == "__main__":
                     "into this program, then first data from the "
                     "pipe is published, then messages from this "
                     "option are published.")
+    # allow multiple messages , e.g. -i "i1.jpg" "i2.gif"
+    # or -m "i1.png" -i "i2.jpeg"
+    # image is going to be a list of strings
+    # e.g. image=[ 'i1.jpg', 'i2.png' ]
+    ap.add_argument("-i", "--image", required=False,
+                    action="extend", nargs="+", type=str,
+                    help="Send this image."
+                    "This option can be used multiple time to send "
+                    "multiple images. First images are send, "
+                    "then text messages are send.")
+    # allow multiple audio files , e.g. -i "a1.mp3" "a2.wav"
+    # or -m "a1.mp3" -i "a2.m4a"
+    # audio is going to be a list of strings
+    # e.g. audio=[ 'a1.mp3', 'a2.m4a' ]
+    ap.add_argument("-a", "--audio", required=False,
+                    action="extend", nargs="+", type=str,
+                    help="Send this audio file."
+                    "This option can be used multiple time to send "
+                    "multiple audio files. First audios are send, "
+                    "then text messages are send.")
+    # allow multiple files , e.g. -i "a1.pdf" "a2.doc"
+    # or -m "a1.pdf" -i "a2.doc"
+    # file is going to be a list of strings
+    # e.g. file=[ 'a1.pdf', 'a2.doc' ]
+    ap.add_argument("-f", "--file", required=False,
+                    action="extend", nargs="+", type=str,
+                    help="Send this file (e.g. PDF, DOC)."
+                    "This option can be used multiple time to send "
+                    "multiple files. First files are send, "
+                    "then text messages are send.")
     # -h already used for --help, -w for "web"
     ap.add_argument("-w", "--html", required=False,
                     action="store_true", help="Send message as format "
@@ -520,8 +593,8 @@ if __name__ == "__main__":
                     "as format \"TEXT\". E.g. that allows some text "
                     "to be bold, etc. Only a subset of HTML tags are "
                     "accepted by Matrix.")
-    # -m already used for --message, -n for "dowN"
-    ap.add_argument("-n", "--markdown", required=False,
+    # -m already used for --message, -z because there were no letters left
+    ap.add_argument("-z", "--markdown", required=False,
                     action="store_true", help="Send message as format "
                     "\"MARKDOWN\". If not specified, message will be sent "
                     "as format \"TEXT\". E.g. that allows sending of text "
@@ -534,16 +607,89 @@ if __name__ == "__main__":
                     "useful for sending ASCII-art or tabbed output "
                     "like tables as a fixed-sized font will be used "
                     "for display.")
-    # -n already used for --markdown, -e for "noticE"
-    ap.add_argument("-e", "--notice", required=False,
+    # -s is already used for --store, -i for sPlit
+    ap.add_argument("-p", "--split", required=False, type=str,
+                    help="If set, split the message(s) into multiple messages "
+                    "wherever the string specified with --split occurs."
+                    "E.g. One pipes a stream of RSS articles into the "
+                    "program and the articles are separated by three "
+                    "newlines. "
+                    "Then with --split set to \"\\n\\n\\n\" each article "
+                    "will be printed in a separate message."
+                    "By default, i.e. if not set, no messages will be split.")
+    # -c is already used for --code, -k as it sounds like c
+    ap.add_argument("-k", "--config", required=False, type=str,
+                    help="Location of a config file. By default, no "
+                    "config file is used. "
+                    "If this option is provided, the provided file name "
+                    "will be used to read configuration from. ")
+    ap.add_argument("-n", "--notice", required=False,
                     action="store_true", help="Send message as notice. "
                     "If not specified, message will be sent as text.")
+    ap.add_argument("-e", "--encrypted", required=False,
+                    action="store_true", help="Send message end-to-end"
+                    "encrypted. "
+                    "If not specified, message will be sent unencrypted.")
+    # -n already used for --markdown, -e for "nOtice"
+    ap.add_argument("-s", "--store", required=False, type=str,
+                    default=STORE_DIR_DEFAULT,
+                    help="Path to directory to be "
+                    "used as \"store\" for encrypted messaging."
+                    "Must be specified if -e is used. "
+                    "By default, this directory "
+                    f"is \"{STORE_DIR_DEFAULT}\". "
+                    "It is not needed for unencrypted messaging."
+                    "If this option is provided, the provided directory name "
+                    "will be used as store directory instead of the "
+                    "default one. ")
+
     pargs = ap.parse_args()
     if pargs.debug:
         # set log level on root logger
         logging.getLogger().setLevel(logging.DEBUG)
         logging.getLogger().info("Debug is turned on.")
     logger = logging.getLogger(os.path.basename(__file__))
+
+    if pargs.image:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.audio:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.file:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.encrypted:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.store:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.config:
+        logger.info("This feature is not implemented yet. "
+                    "Please help me implement it. "
+                    "Kindly write code and submit a Pull Request. "
+                    "Your contribution is appreciated. Thnx!")
+        sys.exit(1)
+    if pargs.split:
+        logger.info("Be patient. I am working on this code. "
+                    "Come back later. Thnx!")
+        sys.exit(1)
 
     try:
         asyncio.get_event_loop().run_until_complete(main())
