@@ -48,7 +48,10 @@ c) markdown: MarkDown formatted text
 d) code: used a block of fixed-sized font, idel for ASCII art or
    tables, bash outputs, etc.
 
-Typical images to send are: JPG, JPEG, IMG, PNG, or SVG.
+Typical images that can be sent are: .jpg, .gif, .png or .svg.
+
+Arbirtary files like .txt, .pdf, .doc, audio files like .mp3
+or video files like .mp4 can also be sent.
 
 Since the credentials file holds an access token it
 should be protected and secured. One can use different
