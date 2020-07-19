@@ -7,7 +7,8 @@ r"""matrix-nio-send.py.
 
 # matrix-nio-send
 
-- simple but convenient app to send Matrix messages, text and images.
+- simple but convenient app to send Matrix text messages as well as
+  text, image, audio, video or other arbitrary files.
 - it uses the `matrix-nio` SDK, hence the name `matrix-nio-send`,
   see https://github.com/poljar/matrix-nio/
 
@@ -51,10 +52,12 @@ It supports 4 text formats:
 a) text: default
 b) html:  HTML formated text
 c) markdown: MarkDown formatted text
-d) code: used a block of fixed-sized font, idel for ASCII art or
+d) code: used a block of fixed-sized font, ideal for ASCII art or
    tables, bash outputs, etc.
 
 Typical images to send are: JPG, JPEG, IMG, PNG, or SVG.
+
+Arbitrary files can be sent (e.g. .pdf, .doc, .txt, .mp3, .mp4) too.
 
 Since the credentials file holds an access token it
 should be protected and secured. One can use different
@@ -141,14 +144,18 @@ optional arguments:
                         messages to the preconfigured room. If this option is
                         provided, the provided file name will be used as
                         credentials file instead of the default one.
-  -r ROOM, --room ROOM  Send to this room. Usually the room is provided in
-                        credentials file. If provided it will use this room
-                        instead the one from the credentials file. The user
-                        must have access to the specified room in order to
-                        send messages there. Messages cannot be sent to
-                        arbitrary rooms. When specifying the room id some
-                        shells require the exclamation mark to be escaped
-                        with a blackslash.
+  -r ROOM [ROOM ...], --room ROOM [ROOM ...]
+                        Send to this room or these rooms. None, one or
+                        multiple rooms can be specified. The default room is
+                        provided in credentials file. If a room (or multiple
+                        ones) is (or are) provided in the arguments, then it
+                        (or they) will be used instead of the one from the
+                        credentials file. The user must have access to the
+                        specified room in order to send messages there.
+                        Messages cannot be sent to arbitrary rooms. When
+                        specifying the room id some shells require the
+                        exclamation mark to be escaped with a
+                        blackslash.
   -m MESSAGE [MESSAGE ...], --message MESSAGE [MESSAGE ...]
                         Send this message. If not specified, and no input
                         piped in from stdin, then message will be read from
@@ -224,18 +231,10 @@ optional arguments:
 - Enjoy!
 - Pull request are welcome
 
-# Last Changes
-- incompatible credentials directory, now ~/.config/matrix-nio-send/
-  (was ~/.config/matrix-nio-send.py/).
-  Please remove the ".py" from the directory name.
-  Sorry.
-
 """
 
-# pylama:ignore=W605
 
-
-from nio import AsyncClient, LoginResponse
+from nio import AsyncClient, LoginResponse, UploadResponse
 from markdown import markdown
 from PIL import Image
 import textwrap
@@ -456,7 +455,10 @@ def determine_rooms(room_id) -> list:
     ---------
     room_id : room from credentials file
 
-    Return list of rooms to send to.
+    Look at room from credentials file and at rooms from command line
+    and prepares a definite list of rooms.
+
+    Return list of rooms to send to. Returned list is never empty.
 
     """
     if not pargs.room:
@@ -525,6 +527,125 @@ async def create_credentials_file(credentials_file) -> None:
     sys.exit(1)
 
 
+async def send_file(client, rooms, file):
+    """Process file.
+
+    Upload file to server and then send link to rooms.
+    Works and tested for .pdf, .txt, .ogg, .wav.
+    All these file types are treated the same.
+
+    Arguments:
+    ---------
+    client : Client
+    rooms : list
+        list of room_id-s
+    file : str
+        file name of file from --file argument
+
+    This is a working example for a PDF file.
+    It can be viewed or downloaded from:
+    https://matrix.example.com/_matrix/media/r0/download/
+        example.com/SomeStrangeUriKey # noqa
+    {
+        "type": "m.room.message",
+        "sender": "@someuser:example.com",
+        "content": {
+            "body": "example.pdf",
+            "info": {
+                "size": 6301234,
+                "mimetype": "application/pdf"
+                },
+            "msgtype": "m.file",
+            "url": "mxc://example.com/SomeStrangeUriKey"
+        },
+        "origin_server_ts": 1595100000000,
+        "unsigned": {
+            "age": 1000,
+            "transaction_id": "SomeTxId01234567"
+        },
+        "event_id": "$SomeEventId01234567789Abcdef012345678",
+        "room_id": "!SomeRoomId:example.com"
+    }
+
+    """
+    if not rooms:
+        logger.info("No rooms are given. This should not happen. "
+                    "This file is being droppend and NOT sent.")
+        return
+    if not os.path.isfile(file):
+        logger.debug(f"File {file} is not a file. Doesn't exist or "
+                     "is a directory."
+                     "This file is being droppend and NOT sent.")
+        return
+
+    # # restrict to "txt", "pdf", "mp3", "ogg", "wav", ...
+    # if not re.match("^.pdf$|^.txt$|^.doc$|^.xls$|^.mobi$|^.mp3$",
+    #                os.path.splitext(file)[1].lower()):
+    #    logger.debug(f"File {file} is not a permitted file type. Should be "
+    #                 ".pdf, .txt, .doc, .xls, .mobi or .mp3 ... "
+    #                 f"[{os.path.splitext(file)[1].lower()}]"
+    #                 "This file is being droppend and NOT sent.")
+    #    return
+
+    # 'application/pdf' "plain/text" "audio/ogg"
+    mime_type = magic.from_file(file, mime=True)
+    # if ((not mime_type.startswith("application/")) and
+    #        (not mime_type.startswith("plain/")) and
+    #        (not mime_type.startswith("audio/"))):
+    #    logger.debug(f"File {file} does not have an accepted mime type. "
+    #                 "Should be something like application/pdf. "
+    #                 f"Found mime type {mime_type}. "
+    #                 "This file is being droppend and NOT sent.")
+    #    return
+
+    # first do an upload of file
+    # see https://matrix-nio.readthedocs.io/en/latest/nio.html#nio.AsyncClient.upload # noqa
+    # then send URI of upload to room
+
+    file_stat = await aiofiles.os.stat(file)
+    async with aiofiles.open(file, "r+b") as f:
+        resp, maybe_keys = await client.upload(
+            f,
+            content_type=mime_type,  # application/pdf
+            filename=os.path.basename(file),
+            filesize=file_stat.st_size)
+    if (isinstance(resp, UploadResponse)):
+        logger.debug("File was uploaded successfully to server. "
+                     f"Response is: {resp}")
+    else:
+        logger.info(f"The program {PROG_WITH_EXT} failed to upload. "
+                    "Please retry. This could be temporary issue on "
+                    "your server. "
+                    "Sorry.")
+        logger.info(f"file=\"{file}\"; mime_type=\"{mime_type}\"; "
+                    f"filessize=\"{file_stat.st_size}\""
+                    f"Failed to upload: {resp}")
+
+    content = {
+        "body": os.path.basename(file),  # descriptive title
+        "info": {
+            "size": file_stat.st_size,
+            "mimetype": mime_type,
+        },
+        "msgtype": "m.file",
+        "url": resp.content_uri,
+    }
+
+    try:
+        for room_id in rooms:
+            await client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content=content
+            )
+            logger.debug(f"This file was sent: \"{file}\" "
+                         f"to room \"{room_id}\".")
+    except Exception:
+        logger.debug(f"File send of file {file} failed. "
+                     "Sorry. Here is the traceback.")
+        logger.debug(traceback.format_exc())
+
+
 async def send_image(client, rooms, image):
     """Process image.
 
@@ -570,7 +691,10 @@ async def send_image(client, rooms, image):
     }
 
     """
-    room_id = rooms[0]  # TODO: multiple rooms not yet implemented
+    if not rooms:
+        logger.info("No rooms are given. This should not happen. "
+                    "This image is being droppend and NOT sent.")
+        return
     if not os.path.isfile(image):
         logger.debug(f"Image file {image} is not a file. Doesn't exist or "
                      "is a directory."
@@ -590,15 +714,15 @@ async def send_image(client, rooms, image):
 
     # 'application/pdf' "image/jpeg"
     mime_type = magic.from_file(image, mime=True)
-    if not re.match("^image/jpg$|^image/jpeg$|^image/gif$|"
-                    "^image/png$|^image/svg$",
-                    mime_type.lower()):
+    if not mime_type.startswith("image/"):
         logger.debug(f"Image file {image} does not have an image mime type. "
-                     "Should be something like image/jpeg."
+                     "Should be something like image/jpeg. "
+                     f"Found mime type {mime_type}. "
                      "This image is being droppend and NOT sent.")
         return
 
-    im = Image.open(image)  # later we use: im.size # (width,height) tuple
+    im = Image.open(image)
+    (width, height) = im.size  # im.size returns (width,height) tuple
 
     # first do an upload of image
     # see https://matrix-nio.readthedocs.io/en/latest/nio.html#nio.AsyncClient.upload # noqa
@@ -611,17 +735,30 @@ async def send_image(client, rooms, image):
             content_type=mime_type,  # image/jpeg
             filename=os.path.basename(image),
             filesize=file_stat.st_size)
-    logger.debug(f"We uploaded image to server. Response is: {resp}")
+    if (isinstance(resp, UploadResponse)):
+        logger.debug("Image was uploaded successfully to server. "
+                     f"Response is: {resp}")
+    else:
+        logger.info(f"The program {PROG_WITH_EXT} failed to upload. "
+                    "Please retry. This could be temporary issue on "
+                    "your server. "
+                    "Sorry.")
+        logger.info(f"file=\"{image}\"; mime_type=\"{mime_type}\"; "
+                    f"filessize=\"{file_stat.st_size}\""
+                    f"Failed to upload: {resp}")
+
+    # TODO compute thumbnail, upload thumbnail to Server
+    # TODO add thumbnail info to `content`
 
     content = {
         "body": os.path.basename(image),  # descriptive title
         "info": {
             "size": file_stat.st_size,
             "mimetype": mime_type,
-            "thumbnail_info": None,
-            "w": im.size[0],  # width in pixel
-            "h": im.size[0],  # height in pixel
-            "thumbnail_url": None,
+            "thumbnail_info": None,  # TODO
+            "w": width,  # width in pixel
+            "h": height,  # height in pixel
+            "thumbnail_url": None,  # TODO
             # "thumbnail_file": None,
         },
         "msgtype": "m.image",
@@ -635,12 +772,14 @@ async def send_image(client, rooms, image):
     }
 
     try:
-        await client.room_send(
-            room_id,
-            message_type="m.room.message",
-            content=content
-        )
-        logger.debug(f"This image file was sent as image: \"{image}\"")
+        for room_id in rooms:
+            await client.room_send(
+                room_id,
+                message_type="m.room.message",
+                content=content
+            )
+            logger.debug(f"This image file was sent: \"{image}\" "
+                         f"to room \"{room_id}\".")
     except Exception:
         logger.debug(f"Image send of file {image} failed. "
                      "Sorry. Here is the traceback.")
@@ -650,6 +789,9 @@ async def send_image(client, rooms, image):
 async def send_message(client, rooms, message):
     """Process message.
 
+    Format messages according to instructions from command line arguments.
+    Then send all messages to all rooms.
+
     Arguments:
     ---------
     client : Client
@@ -657,10 +799,22 @@ async def send_message(client, rooms, message):
         list of room_id-s
     message : str
         message to send as read from -m, pipe or keyboard
-        message is in unprocessed format
+        message is without mime formatting
 
     """
-    room_id = rooms[0]  # TODO: multiple rooms not yet implemented
+    if not rooms:
+        logger.info("No rooms are given. This should not happen. "
+                    "This text message is being droppend and NOT sent.")
+        return
+    # remove leading AND trailing newlines to beautify
+    message = message.strip("\n")
+
+    if message == "" or message.strip() == "":
+        logger.debug(
+            "The message is empty. "
+            "This message is being droppend and NOT sent.")
+        return
+
     if pargs.notice:
         content = {"msgtype": "m.notice"}
     else:
@@ -687,21 +841,18 @@ async def send_message(client, rooms, message):
         logger.debug("Sending message in format \"text\".")
     content["body"] = message
 
-    if message == "" or message == "\n":
-        logger.debug(
-            "The message is empty. "
-            "This message is being droppend and NOT sent.")
-    else:
-        try:
+    try:
+        for room_id in rooms:
             await client.room_send(
                 room_id,
                 message_type="m.room.message",
                 content=content
             )
-            logger.debug(f"This message was sent: \"{message}\"")
-        except Exception:
-            logger.debug("Image send failed. Sorry. Here is the traceback.")
-            logger.debug(traceback.format_exc())
+            logger.debug(f"This message was sent: \"{message}\" "
+                         f"to room \"{room_id}\".")
+    except Exception:
+        logger.debug("Image send failed. Sorry. Here is the traceback.")
+        logger.debug(traceback.format_exc())
 
 
 def get_messages_from_pipe() -> list:
@@ -783,10 +934,39 @@ def get_messages_from_keyboard() -> list:
     return messages
 
 
+async def send_messages_and_files(client, rooms, messages):
+    """Send text messages and files.
+
+    First images, audio, etc, then text messaged.
+
+    Arguments:
+    ---------
+    client : Client
+    rooms : list of room_ids
+    messages : list of messages to send
+
+    """
+    if pargs.image:
+        for image in pargs.image:
+            await send_image(client, rooms, image)
+
+    if pargs.audio:
+        for audio in pargs.audio:
+            # audio file can be sent like other files
+            await send_file(client, rooms, audio)
+
+    if pargs.file:
+        for file in pargs.file:
+            await send_file(client, rooms, file)
+
+    for message in messages:
+        await send_message(client, rooms, message)
+
+
 async def process_arguments_and_input(client, rooms):
     """Process arguments and all input.
 
-    Process all input: images, text messages, etc.
+    Process all input: text messages, etc.
     Prepare a list of messages from all sources and then send them.
 
     Arguments:
@@ -809,12 +989,18 @@ async def process_arguments_and_input(client, rooms):
     messages_all = messages_from_commandline + \
         messages_from_pipe + messages_from_keyboard  # keyboard at end
 
-    if pargs.image:
-        for image in pargs.image:
-            await send_image(client, rooms, image)
+    # loop thru all msgs and split them
+    if pargs.split:
+        # pargs.split can have escape characters, it has to be de-escaped
+        decoded_string = bytes(pargs.split, "utf-8").decode("unicode_escape")
+        logger.debug(f"String used for splitting is: \"{decoded_string}\"")
+        messages_all_split = []
+        for m in messages_all:
+            messages_all_split += m.split(decoded_string)
+    else:  # not pargs.split
+        messages_all_split = messages_all
 
-    for message in messages_all:
-        await send_message(client, rooms, message)
+    await send_messages_and_files(client, rooms, messages_all_split)
 
 
 async def main() -> None:
@@ -822,6 +1008,7 @@ async def main() -> None:
     credentials_file = determine_credentials_file()
     store_file = determine_store_file()  # noqa # TODO
     # TODO: how to handle store_file from here on
+
     if not os.path.isfile(credentials_file):
         logger.debug("Credentials file does not exist.")
         await create_credentials_file(credentials_file)
@@ -877,15 +1064,18 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     "default one. ")
     ap.add_argument("-r", "--room", required=False,
                     action="extend", nargs="+", type=str,
-                    help="Send to this room. Usually the room is provided "
-                    "in credentials file. If provided it will use this "
-                    "room instead the one from the credentials file. "
+                    help="Send to this room or these rooms. None, one or "
+                    "multiple rooms can be specified. "
+                    "The default room is provided "
+                    "in credentials file. If a room (or multiple ones) "
+                    "is (or are) provided in the arguments, then it "
+                    "(or they) will be used "
+                    "instead of the one from the credentials file. "
                     "The user must have access to the specified room "
                     "in order to send messages there. Messages cannot "
                     "be sent to arbitrary rooms. When specifying the "
                     "room id some shells require the exclamation mark "
-                    "to be escaped with a blackslash."
-                    "Multiple rooms can be specified.")
+                    "to be escaped with a blackslash.")
     # allow multiple messages , e.g. -m "m1" "m2" or -m "m1" -m "m2"
     # message is going to be a list of strings
     # e.g. message=[ 'm1', 'm2' ]
@@ -993,18 +1183,6 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
         logging.getLogger().info("Debug is turned on.")
     logger = logging.getLogger(PROG_WITHOUT_EXT)
 
-    if pargs.audio:
-        logger.info("This feature is not implemented yet. "
-                    "Please help me implement it. If you feel motivated "
-                    "please write code and submit a Pull Request. "
-                    "Your contribution is appreciated. Thnx!")
-        sys.exit(1)
-    if pargs.file:
-        logger.info("This feature is not implemented yet. "
-                    "Please help me implement it. If you feel motivated "
-                    "please write code and submit a Pull Request. "
-                    "Your contribution is appreciated. Thnx!")
-        sys.exit(1)
     if pargs.encrypted:
         logger.info("This feature is not implemented yet. "
                     "Please help me implement it. If you feel motivated "
@@ -1016,10 +1194,6 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     "Please help me implement it. If you feel motivated "
                     "please write code and submit a Pull Request. "
                     "Your contribution is appreciated. Thnx!")
-        sys.exit(1)
-    if pargs.split:
-        logger.info("Be patient. I am working on this code. "
-                    "Come back later. Thnx!")
         sys.exit(1)
 
     if pargs.encrypted and ((not pargs.store) or (pargs.store == "")):
