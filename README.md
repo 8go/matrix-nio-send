@@ -1,6 +1,7 @@
 # matrix-nio-send
 
-- simple but convenient app to send Matrix messages, text and images.
+- simple but convenient app to send Matrix text messages as well as
+  text, image, audio, video or other arbitrary files.
 - it uses the `matrix-nio` SDK, hence the name `matrix-nio-send`,
   see https://github.com/poljar/matrix-nio/
 
