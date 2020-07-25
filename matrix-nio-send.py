@@ -5,6 +5,10 @@ r"""matrix-nio-send.py.
 0123456789012345678901234567890123456789012345678901234567890123456789012345678
 0000000000111111111122222222223333333333444444444455555555556666666666777777777
 
+[![Built with matrix-nio](
+https://img.shields.io/badge/built%20with-matrix--nio-brightgreen)](
+https://github.com/poljar/matrix-nio)
+
 # matrix-nio-send
 
 - simple but convenient app to send Matrix text messages as well as
@@ -55,9 +59,10 @@ c) markdown: MarkDown formatted text
 d) code: used a block of fixed-sized font, ideal for ASCII art or
    tables, bash outputs, etc.
 
-Typical images to send are: JPG, JPEG, IMG, PNG, or SVG.
+Typical images that can be sent are: .jpg, .gif, .png or .svg.
 
-Arbitrary files can be sent (e.g. .pdf, .doc, .txt, .mp3, .mp4) too.
+Arbirtary files like .txt, .pdf, .doc, audio files like .mp3
+or video files like .mp4 can also be sent.
 
 Since the credentials file holds an access token it
 should be protected and secured. One can use different
@@ -74,17 +79,25 @@ $HOME/.config/matrix-nio-send.py/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
-credentials file.
+credentials file. However, for end-to-end encryption this will
+not work.
+
+The program can accept verification request and verify other devices
+via emojis. Do do so use the --verify option and the program will
+await incoming verification request and act accordingly.
 
 In summary, TLDR: first run sets everything up, thereafter it can
-be used to easily publish messages from the command line.
+be used to easily publish messages from the command line. Thereafter
+one can also send images, audio, files or verify devices for end-to-end
+encryption. End-to-end encryption is enabled by default and
+cannot be turned off.
 
 
 # Dependencies
 
 - Python 3.8 or higher (3.7 will NOT work) installed
 - matrix-nio must be installed, see https://github.com/poljar/matrix-nio
-  pip3 install --user --upgrade matrix-nio
+  pip3 install --user --upgrade matrix-nio[e2e]
 - python3 package markdown must be installed to support MarkDown format
   pip3 install --user --upgrade markdown
 - python3 package python_magic must be installed to support image sending
@@ -101,7 +114,12 @@ $ # this created a credentials.json file
 $ # optionally, if you want you can move it to the app config directory
 $ mkdir $HOME/.config/matrix-nio-send.py # optional
 $ mv credentials.json $HOME/.config/matrix-nio-send.py/
-$ # now you are ready to run program for a second time and send a msg
+$ # Now you are ready to run program for a second time
+$ # Let us verify the device/room to where we want to send messages
+$ # The other device will issue a "verify by emoji" request
+$ matrix-nio-send.py --verify
+$ # Now program both configured and verified, let us send the first message
+$ matrix-nio-send.py -m "First message!"
 $ matrix-nio-send.py --debug # turn debugging on
 $ matrix-nio-send.py --help # print help
 $ matrix-nio-send.py # this will ask user for message to send
@@ -120,17 +138,31 @@ $ # send 2 images and 1 text
 $ matrix-nio-send.py -i photo1.jpg photo2.img -m "Do you like my 2 photos?"
 $ # send 1 image and no text
 $ matrix-nio-send.py -i photo1.jpg -m ""
+$ # send 1 audio and 1 text to 2 rooms
+$ matrix-nio-send.py -a song.mp3 -m "Do you like this song?" \
+    -r "!someroom1:example.com" "!someroom2:example.com"
+$ # send a .pdf file and a video with a text
+$ matrix-nio-send.py -f example.pdf video.mp4 -m "Here are the promised files"
+```
 
-usage: matrix-nio-send.py [-h] [-d] [-t CREDENTIALS] [-r ROOM]
+# Usage
+```
+usage: matrix-nio-send.py [-h] [-d] [-t CREDENTIALS] [-r ROOM [ROOM ...]]
                           [-m MESSAGE [MESSAGE ...]] [-i IMAGE [IMAGE ...]]
                           [-a AUDIO [AUDIO ...]] [-f FILE [FILE ...]] [-w]
                           [-z] [-c] [-p SPLIT] [-k CONFIG] [-n] [-e]
-                          [-s STORE]
+                          [-s STORE] [-v VERIFY]
 
-On first run this program will configure itself. On further runs this program
-implements a simple Matrix sender. It sends one or multiple text message to a
-Matrix room. The messages can be of format "text", "html", "markdown" or
-"code".matrix-nio must be installed.
+On first run this program will configure itself. On further runs this
+program implements a simple Matrix sender. It sends one or multiple text
+message to one or multiple Matrix rooms. The text messages can be of format
+"text", "html", "markdown" or "code". Images, audio or arbitrary files can
+be sent as well. Emoji verification is built-in which can be used to verify
+devices. End-to-end encryption is enabled by default and cannot be turned
+off. matrix-nio (https://github.com/poljar/matrix-nio) and end-to-end
+encryption packages must be installed. See dependencies in source code (or
+README.md). For even more explications run this program with the --help
+option or read the full documentation in the source code.
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -141,8 +173,8 @@ optional arguments:
                         By default, this file is "credentials.json". On
                         further runs the credentials file is read to permit
                         logging into the correct Matrix account and sending
-                        messages to the preconfigured room. If this option is
-                        provided, the provided file name will be used as
+                        messages to the preconfigured room. If this option
+                        is provided, the provided file name will be used as
                         credentials file instead of the default one.
   -r ROOM [ROOM ...], --room ROOM [ROOM ...]
                         Send to this room or these rooms. None, one or
@@ -154,27 +186,26 @@ optional arguments:
                         specified room in order to send messages there.
                         Messages cannot be sent to arbitrary rooms. When
                         specifying the room id some shells require the
-                        exclamation mark to be escaped with a
-                        blackslash.
+                        exclamation mark to be escaped with a blackslash.
   -m MESSAGE [MESSAGE ...], --message MESSAGE [MESSAGE ...]
                         Send this message. If not specified, and no input
                         piped in from stdin, then message will be read from
-                        stdin, i.e. keyboard.This option can be used multiple
-                        time to send multiple messages. If there is data is
-                        piped into this program, then first data from the
-                        pipe is published, then messages from this option are
-                        published.
+                        stdin, i.e. keyboard. This option can be used
+                        multiple time to send multiple messages. If there is
+                        data is piped into this program, then first data
+                        from the pipe is published, then messages from this
+                        option are published.
   -i IMAGE [IMAGE ...], --image IMAGE [IMAGE ...]
-                        Send this image.This option can be used multiple time
-                        to send multiple images. First images are send, then
-                        text messages are send.
+                        Send this image. This option can be used multiple
+                        time to send multiple images. First images are send,
+                        then text messages are send.
   -a AUDIO [AUDIO ...], --audio AUDIO [AUDIO ...]
-                        Send this audio file.This option can be used multiple
-                        time to send multiple audio files. First audios are
-                        send, then text messages are send.
+                        Send this audio file. This option can be used
+                        multiple time to send multiple audio files. First
+                        audios are send, then text messages are send.
   -f FILE [FILE ...], --file FILE [FILE ...]
-                        Send this file (e.g. PDF, DOC).This option can be
-                        used multiple time to send multiple files. First
+                        Send this file (e.g. PDF, DOC, MP4). This option can
+                        be used multiple time to send multiple files. First
                         files are send, then text messages are send.
   -w, --html            Send message as format "HTML". If not specified,
                         message will be sent as format "TEXT". E.g. that
@@ -182,49 +213,65 @@ optional arguments:
                         HTML tags are accepted by Matrix.
   -z, --markdown        Send message as format "MARKDOWN". If not specified,
                         message will be sent as format "TEXT". E.g. that
-                        allows sending of text formated in MarkDown language.
+                        allows sending of text formated in MarkDown
+                        language.
   -c, --code            Send message as format "CODE". If not specified,
-                        message will be sent as format "TEXT". If both --html
-                        and --code are specified then --code takes priority.
-                        This is useful for sending ASCII-art or tabbed output
-                        like tables as a fixed-sized font will be used for
-                        display.
+                        message will be sent as format "TEXT". If both
+                        --html and --code are specified then --code takes
+                        priority. This is useful for sending ASCII-art or
+                        tabbed output like tables as a fixed-sized font will
+                        be used for display.
   -p SPLIT, --split SPLIT
                         If set, split the message(s) into multiple messages
-                        wherever the string specified with --split
-                        occurs.E.g. One pipes a stream of RSS articles into
-                        the program and the articles are separated by three
+                        wherever the string specified with --split occurs.
+                        E.g. One pipes a stream of RSS articles into the
+                        program and the articles are separated by three
                         newlines. Then with --split set to "\n\n\n" each
-                        article will be printed in a separate message.By
+                        article will be printed in a separate message. By
                         default, i.e. if not set, no messages will be split.
   -k CONFIG, --config CONFIG
-                        Location of a config file. By default, no config file
-                        is used. If this option is provided, the provided
-                        file name will be used to read configuration from.
+                        Location of a config file. By default, no config
+                        file is used. If this option is provided, the
+                        provided file name will be used to read
+                        configuration from.
   -n, --notice          Send message as notice. If not specified, message
                         will be sent as text.
-  -e, --encrypted       Send message end-to-endencrypted. If not specified,
-                        message will be sent unencrypted.
+  -e, --encrypted       Send message end-to-end encrypted. Encryption is
+                        always turned on and will always be used where
+                        possible. It cannot be turned off. This flag does
+                        nothing as encryption is turned on with or without
+                        this argument.
   -s STORE, --store STORE
-                        Path to directory to be used as "store" for encrypted
-                        messaging.Must be specified if -e is used. By
-                        default, this directory is "store". It is not needed
-                        for unencrypted messaging.If this option is provided,
-                        the provided directory name will be used as store
-                        directory instead of the default one.
+                        Path to directory to be used as "store" for
+                        encrypted messaging. By default, this directory is
+                        "./store/". Since encryption is always enabled, a
+                        store is always needed. If this option is provided,
+                        the provided directory name will be used as
+                        persistent storage directory instead of the default
+                        one. Preferably, for multiple executions of this
+                        program use the same store for the same device.
+  -v VERIFY, --verify VERIFY
+                        Perform verification. By default, no verification is
+                        performed. Possible values are: "emoji". If
+                        verification is desired, run this program in the
+                        foreground (not as a service) and without a pipe.
+                        Verification questions will be printed on stdout and
+                        the user has to respond via the keyboard to accept
+                        or reject verification. Once verification is
+                        complete, stop the program and run it as a service
+                        again. Don't send messages or files when you verify.
+
 ```
 
 # For Developers
 
 - Don't change tabbing, spacing, or formating as file is automatically
   linted with autopep8 --aggressive
-- Long lines are ignored by linter
-- pylama:format=pep8:linters=pep8:ignore=E501
+- pylama:format=pep8:linters=pep8
 
 # Things to do, things missing
 
-- adding end-to-end encryption, ee2e
-- should multiple -r be allowed to send to several rooms?
+- help me add config file handling
 
 # Final Remarks
 
@@ -234,39 +281,199 @@ optional arguments:
 """
 
 
-from nio import AsyncClient, LoginResponse, UploadResponse
-from markdown import markdown
-from PIL import Image
-import textwrap
-import traceback
-import logging
-import argparse
-import getpass
-import select
-import sys
-import os
-import re  # regular expression
-import json
-import asyncio
-import aiofiles
-import aiofiles.os
 import magic
+import aiofiles.os
+import aiofiles
+import asyncio
+import json
+import re  # regular expression
+import os
+import sys
+import select
+import getpass
+import argparse
+import logging
+import traceback
+import textwrap
+from PIL import Image
+from markdown import markdown
+from nio import (
+    AsyncClient,
+    AsyncClientConfig,
+    LoginResponse,
+    UploadResponse,
+    KeyVerificationEvent,
+    KeyVerificationStart,
+    KeyVerificationCancel,
+    KeyVerificationKey,
+    KeyVerificationMac,
+    ToDeviceError,
+)
 
 # matrix-nio-send
 PROG_WITHOUT_EXT = os.path.splitext(os.path.basename(__file__))[0]
 # matrix-nio-send.py
 PROG_WITH_EXT = os.path.basename(__file__)
-CREDENTIALS_FILE_DEFAULT = "credentials.json"
+# file to store credentials in case you want to run program multiple times
+CREDENTIALS_FILE_DEFAULT = "credentials.json"  # login credentials JSON file
 # e.g. ~/.config/matrix-nio-send/
-CREDENTIALS_DIR_LASTRESORT = ("~/.config/" +
+CREDENTIALS_DIR_LASTRESORT = (os.path.expanduser("~/.config/") +
                               os.path.splitext(os.path.basename(__file__))[0])
 # directory to be used by end-to-end encrypted protocol for persistent storage
-STORE_DIR_DEFAULT = "store"
+STORE_DIR_DEFAULT = "./store/"
 # e.g. ~/.local/share/matrix-nio-send/
-STORE_PATH_LASTRESORT = ("~/.local/share/" +
+STORE_PATH_LASTRESORT = (os.path.expanduser("~/.local/share/") +
                          os.path.splitext(os.path.basename(__file__))[0])
 # the store path and store dir will be concatenated to result in:
 # e.g. ~/.local/share/matrix-nio-send/store/ as actual persistent store dir
+EMOJI = "emoji"  # verification type
+
+
+class Callbacks(object):
+    """Class to pass client to callback methods."""
+
+    def __init__(self, client):
+        """Store AsyncClient."""
+        self.client = client
+
+    async def to_device_callback(self, event):  # noqa
+        """Handle events sent to device."""
+        try:
+            client = self.client
+
+            if isinstance(event, KeyVerificationStart):  # first step
+                """ first step: receive KeyVerificationStart
+                KeyVerificationStart(
+                    source={'content':
+                            {'method': 'm.sas.v1',
+                             'from_device': 'DEVICEIDXY',
+                             'key_agreement_protocols':
+                                ['curve25519-hkdf-sha256', 'curve25519'],
+                             'hashes': ['sha256'],
+                             'message_authentication_codes':
+                                ['hkdf-hmac-sha256', 'hmac-sha256'],
+                             'short_authentication_string':
+                                ['decimal', 'emoji'],
+                             'transaction_id': 'SomeTxId'
+                             },
+                            'type': 'm.key.verification.start',
+                            'sender': '@user2:example.org'
+                            },
+                    sender='@user2:example.org',
+                    transaction_id='SomeTxId',
+                    from_device='DEVICEIDXY',
+                    method='m.sas.v1',
+                    key_agreement_protocols=[
+                        'curve25519-hkdf-sha256', 'curve25519'],
+                    hashes=['sha256'],
+                    message_authentication_codes=[
+                        'hkdf-hmac-sha256', 'hmac-sha256'],
+                    short_authentication_string=['decimal', 'emoji'])
+                """
+
+                if "emoji" not in event.short_authentication_string:
+                    print("Other device does not support emoji verification "
+                          f"{event.short_authentication_string}.")
+                    return
+                resp = await client.accept_key_verification(
+                    event.transaction_id)
+                if isinstance(resp, ToDeviceError):
+                    print(f"accept_key_verification failed with {resp}")
+
+                sas = client.key_verifications[event.transaction_id]
+
+                todevice_msg = sas.share_key()
+                resp = await client.to_device(todevice_msg)
+                if isinstance(resp, ToDeviceError):
+                    print(f"to_device failed with {resp}")
+
+            elif isinstance(event, KeyVerificationCancel):  # anytime
+                """ at any time: receive KeyVerificationCancel
+                KeyVerificationCancel(source={
+                    'content': {'code': 'm.mismatched_sas',
+                                'reason': 'Mismatched authentication string',
+                                'transaction_id': 'SomeTxId'},
+                    'type': 'm.key.verification.cancel',
+                    'sender': '@user2:example.org'},
+                    sender='@user2:example.org',
+                    transaction_id='SomeTxId',
+                    code='m.mismatched_sas',
+                    reason='Mismatched short authentication string')
+                """
+
+                resp = await client.cancel_key_verification(
+                    event.transaction_id, reject=False)
+                if isinstance(resp, ToDeviceError):
+                    print(f"cancel_key_verification failed with {resp}")
+
+            elif isinstance(event, KeyVerificationKey):  # second step
+                """ Second step is to receive KeyVerificationKey
+                KeyVerificationKey(
+                    source={'content': {
+                            'key': 'SomeCryptoKey',
+                            'transaction_id': 'SomeTxId'},
+                        'type': 'm.key.verification.key',
+                        'sender': '@user2:example.org'
+                    },
+                    sender='@user2:example.org',
+                    transaction_id='SomeTxId',
+                    key='SomeCryptoKey')
+                """
+                sas = client.key_verifications[event.transaction_id]
+
+                print(f"{sas.get_emoji()}")
+
+                yn = input("Do the emojis match? (Y/N) ")
+                if yn.lower() == "y":
+                    print("Match! Device will be verified "
+                          "by accepting verification.")
+                    resp = await client.confirm_short_auth_string(
+                        event.transaction_id)
+                    if isinstance(resp, ToDeviceError):
+                        print(f"confirm_short_auth_string failed with {resp}")
+                else:  # no, don't match, reject
+                    print("No match! Device will NOT be verified "
+                          "by rejecting verification.")
+                    resp = await client.cancel_key_verification(
+                        event.transaction_id, reject=True)
+                    if isinstance(resp, ToDeviceError):
+                        print(f"confirm_short_auth_string failed with {resp}")
+            elif isinstance(event, KeyVerificationMac):  # third step
+                """ Third step is to receive KeyVerificationMac
+                KeyVerificationMac(
+                    source={'content': {
+                        'mac': {'ed25519:DEVICEIDXY': 'SomeKey1',
+                                'ed25519:SomeKey2': 'SomeKey3'},
+                        'keys': 'SomeCryptoKey4',
+                        'transaction_id': 'SomeTxId'},
+                        'type': 'm.key.verification.mac',
+                        'sender': '@user2:example.org'},
+                    sender='@user2:example.org',
+                    transaction_id='SomeTxId',
+                    mac={'ed25519:DEVICEIDXY': 'SomeKey1',
+                         'ed25519:SomeKey2': 'SomeKey3'},
+                    keys='SomeCryptoKey4')
+                """
+                sas = client.key_verifications[event.transaction_id]
+                todevice_msg = sas.get_mac()
+                resp = await client.to_device(todevice_msg)
+                if isinstance(resp, ToDeviceError):
+                    print(f"to_device failed with {resp}")
+                print(f"sas.we_started_it = {sas.we_started_it}\n"
+                      f"sas.sas_accepted = {sas.sas_accepted}\n"
+                      f"sas.canceled = {sas.canceled}\n"
+                      f"sas.timed_out = {sas.timed_out}\n"
+                      f"sas.verified = {sas.verified}\n"
+                      f"sas.verified_devices = {sas.verified_devices}\n")
+                print("Emoji verification was successful.\n"
+                      "Hit Control-C to stop the program or "
+                      "initiate another Emoji verification from "
+                      "another device or room.")
+            else:
+                print(f"Received unexpected event type {type(event)}. "
+                      f"Event is {event}. Event will be ignored.")
+        except BaseException:
+            print(traceback.format_exc())
 
 
 def write_credentials_to_disk(homeserver, user_id, device_id, access_token,
@@ -315,7 +522,7 @@ def write_credentials_to_disk(homeserver, user_id, device_id, access_token,
         )
 
 
-def read_credentials_from_disk(credentials_file) -> None:
+def read_credentials_from_disk(credentials_file) -> dict:
     """Read the required login details from disk.
 
     It can then be used to log in without using a password.
@@ -366,8 +573,8 @@ def determine_credentials_file() -> str:
         logger.debug("Credentials file does not exist locally. "
                      "File name has no path.")
         credentials_file = CREDENTIALS_DIR_LASTRESORT + "/" + pargs.credentials
-        logger.debug("Trying path {credentials_file} as last resort. "
-                     "Suggesting to look for there.")
+        logger.debug(f"Trying path \"{credentials_file}\" as last resort. "
+                     "Suggesting to look for it there.")
         if os.path.isfile(credentials_file):
             logger.debug("We found the file. It exists in the last resort "
                          f"directory {credentials_file} "
@@ -382,11 +589,11 @@ def determine_credentials_file() -> str:
         if os.path.isfile(pargs.credentials):
             logger.debug("Credentials file existed. "
                          "So this is the one we suggest to use. "
-                         "file: {credentials_file}")
+                         f"file: {credentials_file}")
         else:
             logger.debug("Credentials file was specified with full path. "
                          "So we suggest that one. "
-                         "file: {credentials_file}")
+                         f"file: {credentials_file}")
     # The returned file (with or without path)  might or might not exist.
     # But if it does not exist, it is either a full path, or local.
     # We do not want to return the last resort path if it does not exist,
@@ -395,12 +602,12 @@ def determine_credentials_file() -> str:
     return credentials_file
 
 
-def determine_store_file() -> str:
+def determine_store_dir() -> str:
     """Determine the true full directory name of store directory.
 
     Returns filename with full path (a dir) or None.
 
-    If -e encrypted is NOT turned on return None.
+    If -e encrypted is NOT turned, return None.
 
     The store path will be looked for the following way:
     a) if a path (e.g. "../store") is specified with -s it will be looked
@@ -476,55 +683,6 @@ def determine_rooms(room_id) -> list:
                      f"with rooms \"{rooms}\" "
                      "from command line.")
         return rooms
-
-
-async def create_credentials_file(credentials_file) -> None:
-    """Log in, create credentials file, log out and exit."""
-    text = f'''
-            Credentials file \"{pargs.credentials}\" was not found.
-            First time use? Setting up new credentials?
-            Asking for homeserver, user, password and
-            room id to create a credentials file.'''
-    print(textwrap.fill(textwrap.dedent(text).strip(), width=79))
-    homeserver = "https://matrix.example.org"
-    homeserver = input(f"Enter URL of your homeserver: [{homeserver}] ")
-    if not (homeserver.startswith("https://")
-            or homeserver.startswith("http://")):
-        homeserver = "https://" + homeserver
-    user_id = "@user:example.org"
-    user_id = input(f"Enter your full user ID: [{user_id}] ")
-    device_name = PROG_WITHOUT_EXT
-    device_name = input(f"Choose a name for this device: [{device_name}] ")
-    if device_name == "":
-        device_name = PROG_WITHOUT_EXT  # default
-    room_id = "!SomeRoomIdString:example.org"
-    room_id = input(f"Enter your room ID: [{room_id}] ")
-    client = AsyncClient(homeserver, user_id)
-    pw = getpass.getpass()
-    resp = await client.login(pw, device_name=device_name)
-    # check that we logged in succesfully
-    if (isinstance(resp, LoginResponse)):
-        # when writing, always write to primary location (e.g. .)
-        write_credentials_to_disk(homeserver, resp.user_id, resp.device_id,
-                                  resp.access_token, room_id,
-                                  pargs.credentials)
-        text = f'''
-                Log in using a password was successful.
-                Credentials were stored in file \"{pargs.credentials}\".
-                Run program \"{PROG_WITH_EXT}\" again to
-                login with credentials and to send a message.
-                If you plan on having many credential files, consider
-                moving them to directory \"{CREDENTIALS_DIR_LASTRESORT}\".'''
-        print(textwrap.fill(textwrap.dedent(text).strip(), width=79))
-    else:
-        logger.info(f"The program {PROG_WITH_EXT} failed. "
-                    "Most likely wrong credentials were entered."
-                    "Sorry.")
-        logger.info(f"homeserver=\"{homeserver}\"; user=\"{user_id}\"; "
-                    f"room_id=\"{room_id}\""
-                    f"Failed to log in: {resp}")
-    await client.close()
-    sys.exit(1)
 
 
 async def send_file(client, rooms, file):
@@ -846,7 +1004,8 @@ async def send_message(client, rooms, message):
             await client.room_send(
                 room_id,
                 message_type="m.room.message",
-                content=content
+                content=content,
+                ignore_unverified_devices=True,
             )
             logger.debug(f"This message was sent: \"{message}\" "
                          f"to room \"{room_id}\".")
@@ -921,7 +1080,7 @@ def get_messages_from_keyboard() -> list:
                      "Reading message from stdin pipe.")
     if ((not stdin_ready) and (sys.stdin.isatty())):
         # because sys.stdin.isatty() is true
-        logger.debug("No pipe was used, so read input from keyboard."
+        logger.debug("No pipe was used, so read input from keyboard. "
                      "Reading message from keyboard")
         try:
             message = input("Enter message to send: ")
@@ -1003,30 +1162,177 @@ async def process_arguments_and_input(client, rooms):
     await send_messages_and_files(client, rooms, messages_all_split)
 
 
-async def main() -> None:
+async def create_credentials_file(credentials_file: str,
+                                  store_dir: str) -> None:
+    """Log in, create credentials file, log out and exit.
+
+    Arguments:
+    ---------
+        credentials_file: str : location of credentials file
+        store_dir: str : location of persistent storage store directory
+
+    """
+    text = f'''
+            Credentials file \"{pargs.credentials}\" was not found.
+            First time use? Setting up new credentials?
+            Asking for homeserver, user, password and
+            room id to create a credentials file.'''
+    print(textwrap.fill(textwrap.dedent(text).strip(), width=79))
+    homeserver = "https://matrix.example.org"
+    homeserver = input(f"Enter URL of your homeserver: [{homeserver}] ")
+    if not (homeserver.startswith("https://")
+            or homeserver.startswith("http://")):
+        homeserver = "https://" + homeserver
+    user_id = "@user:example.org"
+    user_id = input(f"Enter your full user ID: [{user_id}] ")
+    device_name = PROG_WITHOUT_EXT
+    device_name = input(f"Choose a name for this device: [{device_name}] ")
+    if device_name == "":
+        device_name = PROG_WITHOUT_EXT  # default
+    room_id = "!SomeRoomIdString:example.org"
+    room_id = input(f"Enter your room ID: [{room_id}] ")
+
+    # Configuration options for the AsyncClient
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True,)
+
+    if not os.path.exists(store_dir):
+        os.makedirs(store_dir)
+        logger.info(f"The persistent storage directory {store_dir} "
+                    "was created for you.")
+
+    # Initialize the matrix client
+    client = AsyncClient(
+        homeserver,
+        user_id,
+        store_path=store_dir,
+        config=client_config,)
+
+    pw = getpass.getpass()
+    resp = await client.login(pw, device_name=device_name)
+    # check that we logged in succesfully
+    if (isinstance(resp, LoginResponse)):
+        # when writing, always write to primary location (e.g. .)
+        write_credentials_to_disk(homeserver, resp.user_id, resp.device_id,
+                                  resp.access_token, room_id,
+                                  pargs.credentials)
+        text = f'''
+                Log in using a password was successful.
+                Credentials were stored in file \"{pargs.credentials}\".
+                Run program \"{PROG_WITH_EXT}\" again to
+                login with credentials and to send a message.
+                If you plan on having many credential files, consider
+                moving them to directory \"{CREDENTIALS_DIR_LASTRESORT}\".'''
+        print(textwrap.fill(textwrap.dedent(text).strip(), width=79))
+    else:
+        logger.info(f"The program {PROG_WITH_EXT} failed. "
+                    "Most likely wrong credentials were entered."
+                    "Sorry.")
+        logger.info(f"homeserver=\"{homeserver}\"; user=\"{user_id}\"; "
+                    f"room_id=\"{room_id}\""
+                    f"Failed to log in: {resp}")
+    await client.close()
+    sys.exit(1)
+
+
+def login_using_credentials_file(
+        credentials_file: str,
+        store_dir: str) -> (AsyncClient, dict):
+    """Log in by using available credentials file.
+
+    Arguments:
+    ---------
+        credentials_file: str : location of credentials file
+        store_dir: str : location of persistent storage store directory
+
+    Returns
+    -------
+        AsyncClient : the created NIO client
+        dict : the credentials dictionary from the credentials file
+
+    """
+    credentials = read_credentials_from_disk(credentials_file)
+
+    # Configuration options for the AsyncClient
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True,
+    )
+    # Initialize the matrix client based on credentials from file
+    client = AsyncClient(
+        credentials['homeserver'],
+        credentials['user_id'],
+        device_id=credentials['device_id'],
+        store_path=store_dir,
+        config=client_config,
+    )
+    client.restore_login(
+        user_id=credentials['user_id'],
+        device_id=credentials['device_id'],
+        access_token=credentials['access_token']
+    )
+    # room_id = credentials['room_id']
+    logger.debug("Logged in using stored credentials from "
+                 f"credentials file \"{credentials_file}\".")
+    return (client, credentials)
+
+
+async def main_verify() -> None:
+    """Use credentials to log in and verify."""
+    credentials_file = determine_credentials_file()
+    store_dir = determine_store_dir()
+    if not os.path.isfile(credentials_file):
+        logger.debug("Credentials file must be created first before one "
+                     "can verify.")
+        sys.exit(1)
+    logger.debug("Credentials file does exist.")
+    client, credentials = login_using_credentials_file(credentials_file,
+                                                       store_dir)
+    # Set up event callbacks
+    callbacks = Callbacks(client)
+    client.add_to_device_callback(
+        callbacks.to_device_callback, (KeyVerificationEvent,))
+    # Sync encryption keys with the server
+    # Required for participating in encrypted rooms
+    if client.should_upload_keys:
+        await client.keys_upload()
+    print("This program is ready and waiting for the other party to initiate "
+          "an emoji verification with us by selecting \"Verify by Emoji\" "
+          "in their Matrix client.")
+    # the sync_loop will be terminated by user hitting Control-C to stop
+    await client.sync_forever(timeout=30000, full_state=True)
+
+
+async def main_send() -> None:
     """Create credentials, or use credentials to log in and send messages."""
     credentials_file = determine_credentials_file()
-    store_file = determine_store_file()  # noqa # TODO
-    # TODO: how to handle store_file from here on
-
+    store_dir = determine_store_dir()
     if not os.path.isfile(credentials_file):
         logger.debug("Credentials file does not exist.")
-        await create_credentials_file(credentials_file)
+        await create_credentials_file(credentials_file, store_dir)
     else:
         logger.debug("Credentials file does exist.")
-        credentials = read_credentials_from_disk(credentials_file)
-        client = AsyncClient(credentials['homeserver'])
-        client.access_token = credentials['access_token']
-        client.user_id = credentials['user_id']
-        client.device_id = credentials['device_id']
-        room_id = credentials['room_id']
-        logger.debug("Logged in using stored credentials from "
-                     f"credentials file \"{credentials_file}\".")
-
-        # Now we can send messages as the user
-        rooms = determine_rooms(room_id)
+        client, credentials = login_using_credentials_file(credentials_file,
+                                                           store_dir)
+        # a few more steps to prepare for sending messages
+        rooms = determine_rooms(credentials['room_id'])
         logger.debug(f"Rooms are: {rooms}")
+        # Sync encryption keys with the server
+        # Required for participating in encrypted rooms
+        if client.should_upload_keys:
+            await client.keys_upload()
+        # must sync first to get room ids for encrypted rooms
+        # since we only send a msg and then stop we can use sync() instead of
+        # sync_forever() (await client.sync_forever(30000, full_state=True))
+        await client.sync(timeout=30000, full_state=True)
+        # Now we can send messages as the user
         await process_arguments_and_input(client, rooms)
+        logger.debug("Messages were sent. We close the client and quit")
         await client.close()
 
 
@@ -1042,10 +1348,17 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
     ap = argparse.ArgumentParser(
         description="On first run this program will configure itself. "
         "On further runs this program implements a simple Matrix sender. "
-        "It sends one or multiple text message to a Matrix room. "
-        "The messages can be of format \"text\", \"html\", \"markdown\" "
-        "or \"code\"."
-        "matrix-nio must be installed.")
+        "It sends one or multiple text message to one or multiple Matrix  "
+        "rooms. The text messages can be of format \"text\", \"html\", "
+        "\"markdown\" or \"code\". Images, audio or arbitrary files can "
+        "be sent as well. Emoji verification is built-in which can be used "
+        "to verify devices. End-to-end encryption is enabled by default "
+        "and cannot be turned off. "
+        "matrix-nio (https://github.com/poljar/matrix-nio) and end-to-end "
+        "encryption packages must be installed. "
+        "See dependencies in source code (or README.md). For even more "
+        "explications run this program with the --help option or read the "
+        "full documentation in the source code.")
     # Add the arguments to the parser
     ap.add_argument("-d", "--debug", required=False,
                     action="store_true", help="Print debug information")
@@ -1083,7 +1396,7 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     action="extend", nargs="+", type=str,
                     help="Send this message. If not specified, and no "
                     "input piped in from stdin, then message "
-                    "will be read from stdin, i.e. keyboard."
+                    "will be read from stdin, i.e. keyboard. "
                     "This option can be used multiple time to send "
                     "multiple messages. If there is data is piped "
                     "into this program, then first data from the "
@@ -1095,7 +1408,7 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
     # e.g. image=[ 'i1.jpg', 'i2.png' ]
     ap.add_argument("-i", "--image", required=False,
                     action="extend", nargs="+", type=str,
-                    help="Send this image."
+                    help="Send this image. "
                     "This option can be used multiple time to send "
                     "multiple images. First images are send, "
                     "then text messages are send.")
@@ -1105,7 +1418,7 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
     # e.g. audio=[ 'a1.mp3', 'a2.m4a' ]
     ap.add_argument("-a", "--audio", required=False,
                     action="extend", nargs="+", type=str,
-                    help="Send this audio file."
+                    help="Send this audio file. "
                     "This option can be used multiple time to send "
                     "multiple audio files. First audios are send, "
                     "then text messages are send.")
@@ -1115,7 +1428,7 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
     # e.g. file=[ 'a1.pdf', 'a2.doc' ]
     ap.add_argument("-f", "--file", required=False,
                     action="extend", nargs="+", type=str,
-                    help="Send this file (e.g. PDF, DOC)."
+                    help="Send this file (e.g. PDF, DOC, MP4). "
                     "This option can be used multiple time to send "
                     "multiple files. First files are send, "
                     "then text messages are send.")
@@ -1143,12 +1456,12 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
     # -s is already used for --store, -i for sPlit
     ap.add_argument("-p", "--split", required=False, type=str,
                     help="If set, split the message(s) into multiple messages "
-                    "wherever the string specified with --split occurs."
+                    "wherever the string specified with --split occurs. "
                     "E.g. One pipes a stream of RSS articles into the "
                     "program and the articles are separated by three "
                     "newlines. "
                     "Then with --split set to \"\\n\\n\\n\" each article "
-                    "will be printed in a separate message."
+                    "will be printed in a separate message. "
                     "By default, i.e. if not set, no messages will be split.")
     # -c is already used for --code, -k as it sounds like c
     ap.add_argument("-k", "--config", required=False, type=str,
@@ -1160,21 +1473,37 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     action="store_true", help="Send message as notice. "
                     "If not specified, message will be sent as text.")
     ap.add_argument("-e", "--encrypted", required=False,
-                    action="store_true", help="Send message end-to-end"
-                    "encrypted. "
-                    "If not specified, message will be sent unencrypted.")
+                    action="store_true", help="Send message end-to-end "
+                    "encrypted. Encryption is always turned on and "
+                    "will always be used where possible. "
+                    "It cannot be turned off. This flag does nothing "
+                    "as encryption is turned on with or without this "
+                    "argument.")
     # -n already used for --markdown, -e for "nOtice"
     ap.add_argument("-s", "--store", required=False, type=str,
                     default=STORE_DIR_DEFAULT,
                     help="Path to directory to be "
-                    "used as \"store\" for encrypted messaging."
-                    "Must be specified if -e is used. "
+                    "used as \"store\" for encrypted messaging. "
                     "By default, this directory "
                     f"is \"{STORE_DIR_DEFAULT}\". "
-                    "It is not needed for unencrypted messaging."
+                    "Since encryption is always enabled, a store is "
+                    "always needed. "
                     "If this option is provided, the provided directory name "
                     "will be used as persistent storage directory instead of "
-                    "the default one.")
+                    "the default one. Preferably, for multiple executions "
+                    "of this program use the same store for the same device.")
+    ap.add_argument("-v", "--verify", required=False, type=str,
+                    help="Perform verification. By default, no "
+                    "verification is performed. "
+                    f"Possible values are: \"{EMOJI}\". "
+                    "If verification is desired, run this program in the "
+                    "foreground (not as a service) and without a pipe. "
+                    "Verification questions "
+                    "will be printed on stdout and the user has to respond "
+                    "via the keyboard to accept or reject verification. "
+                    "Once verification is complete, stop the program and "
+                    "run it as a service again. Don't send messages or "
+                    "files when you verify. ")
 
     pargs = ap.parse_args()
     if pargs.debug:
@@ -1183,12 +1512,10 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
         logging.getLogger().info("Debug is turned on.")
     logger = logging.getLogger(PROG_WITHOUT_EXT)
 
-    if pargs.encrypted:
-        logger.info("This feature is not implemented yet. "
-                    "Please help me implement it. If you feel motivated "
-                    "please write code and submit a Pull Request. "
-                    "Your contribution is appreciated. Thnx!")
-        sys.exit(1)
+    if not pargs.encrypted:
+        pargs.encrypted = True  # force it on
+        logger.debug("Encryption is always enabled. It cannot be turned off.")
+
     if pargs.config:
         logger.info("This feature is not implemented yet. "
                     "Please help me implement it. If you feel motivated "
@@ -1196,16 +1523,32 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     "Your contribution is appreciated. Thnx!")
         sys.exit(1)
 
+    # this is set by default anyway, just defensive programming
     if pargs.encrypted and ((not pargs.store) or (pargs.store == "")):
         logger.error("If --encrypt is used --store must be set too. "
                      "Specify --store and run program again.")
         sys.exit(1)
 
-    if not pargs.encrypted:
+    if not pargs.encrypted:  # just in case we ever go back disabling e2e
         pargs.store = None
 
+    if pargs.verify and (pargs.verify.lower() != EMOJI):
+        logger.error(f"For --verify currently only \"{EMOJI}\" is allowed "
+                     "as keyword.")
+        sys.exit(1)
+
+    if (pargs.verify and
+            (pargs.message or pargs.image or pargs.audio or
+             pargs.file or pargs.room)):
+        logger.error("If --verify is specified, only verify can be done. "
+                     "No messages, images, or files can be sent.")
+        sys.exit(1)
+
     try:
-        asyncio.get_event_loop().run_until_complete(main())
+        if pargs.verify:
+            asyncio.get_event_loop().run_until_complete(main_verify())
+        else:
+            asyncio.get_event_loop().run_until_complete(main_send())
     except Exception:
         logger.info(f"The program {PROG_WITH_EXT} failed. "
                     "Sorry. Here is the traceback.")
