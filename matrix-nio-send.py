@@ -72,15 +72,23 @@ On creation the credentials file will always be created in the local
 directory, so the users sees it right away. This is fine if you have
 only one or a few credential files, but for better maintainability
 it is suggested to place your credentials files into directory
-$HOME/.config/matrix-nio-send.py/. When the program looks for
+$HOME/.config/matrix-nio-send/. When the program looks for
 a credentials file it will first look in local directory and then
 as secondary choice it will look in directory
-$HOME/.config/matrix-nio-send.py/.
+$HOME/.config/matrix-nio-send/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
 credentials file. However, for end-to-end encryption this will
-not work.
+NOT work.
+
+End-to-end encryption (e2ee) is enabled by default. It cannot be turned off.
+Wherever possible end-to-end encryption will be used. For e2ee to work
+efficiently a `store` directory is needed to store e2ee data persistently.
+The default location for the store directory is a local directory named
+`store`. Alternatively, as a secondary choice the program looks for a store
+directory in $HOME/.local/shared/matrix-nio-send/store/. The user can always
+specify a different location via the --store argument.
 
 The program can accept verification request and verify other devices
 via emojis. Do do so use the --verify option and the program will
@@ -322,10 +330,15 @@ CREDENTIALS_DIR_LASTRESORT = (os.path.expanduser("~/.config/") +
 # directory to be used by end-to-end encrypted protocol for persistent storage
 STORE_DIR_DEFAULT = "./store/"
 # e.g. ~/.local/share/matrix-nio-send/
-STORE_PATH_LASTRESORT = (os.path.expanduser("~/.local/share/") +
-                         os.path.splitext(os.path.basename(__file__))[0])
-# the store path and store dir will be concatenated to result in:
+# the STORE_PATH_LASTRESORT will be concatenated with a directory name
+# like store to result in a final path of
 # e.g. ~/.local/share/matrix-nio-send/store/ as actual persistent store dir
+STORE_PATH_LASTRESORT = os.path.normpath(
+    (os.path.expanduser("~/.local/share/") +
+     os.path.splitext(os.path.basename(__file__))[0]))
+# e.g. ~/.local/share/matrix-nio-send/store/
+STORE_DIR_LASTRESORT = os.path.normpath(
+    (os.path.expanduser(STORE_PATH_LASTRESORT + "/" + STORE_DIR_DEFAULT)))
 EMOJI = "emoji"  # verification type
 
 
@@ -607,52 +620,73 @@ def determine_store_dir() -> str:
 
     Returns filename with full path (a dir) or None.
 
-    If -e encrypted is NOT turned, return None.
+    For historic reasons:
+    If -e encrypted is NOT turned on, return None.
 
     The store path will be looked for the following way:
-    a) if a path (e.g. "../store") is specified with -s it will be looked
-       for there. End of search.
-    b) if only a dirname without path (e.g. "store") is specified
-       first look in the current local directory, if found use it
+    pargs.store provides either default value or user specified value
+    a) First looked at default/specified value. If dir exists,
+       use it, end of search.
+    b) if last-resort store dir exists, use it, end of search.
     c) if only a dirname without path (e.g. "store") is specified
        and it cannot be found in the current local directory, then
-       look for it in directory $HOME/.local/share/matrix-nio-send/
-    TLDR: The program will look in currently local directory
-       or in path specified with --store command line argument.
+       look for it in last-resort path.
+    TLDR: The program will look in path specified with --store
+       command line argument. If not found there in default
+       local dir. If not found there in last-resort dir.
        If not found there (and only dirname without path given),
-       as a secondary choice program will look for it in
-       directory $HOME/.local/share/matrix-nio-send/
+       as a final choice, the program will look for it in
+       last resort path.
+    If not found anywhere, it will return default/specified value.
 
     """
     if not pargs.store:
         return None
     if not pargs.encrypted:
         return None
-    if pargs.store != os.path.basename(pargs.store):
-        logger.debug("A store was specified in command-line. "
-                     f"It will be used. store: {pargs.store}")
-        if not os.path.isdir(pargs.store):
-            logger.info("Could not find existing store directory anywhere. "
-                        "A new one will be created. "
-                        "It will need to be verified.")
-        return pargs.store
-    logger.debug("No path was specified, just a directory name.")
+    pargs_store_norm = os.path.normpath(pargs.store)  # normailzed for humans
+    text2 = ("It will need to be verified.\n"
+             "The store directory will be created in the "
+             f"directory \"{pargs_store_norm}\". Optionally, consider moving "
+             "the persistent storage directory files inside "
+             f"\"{pargs_store_norm}\" into "
+             f"the directory \"{STORE_DIR_LASTRESORT}\" "
+             "for a more consistent experience.")
     if os.path.isdir(pargs.store):
-        logger.debug("Found an existing store in local dir. "
+        logger.debug("Found an existing store in directory "
+                     f"\"{pargs_store_norm}\". It will be used.")
+        return pargs_store_norm
+    if (pargs.store != STORE_DIR_DEFAULT and
+            pargs.store != os.path.basename(pargs.store)):
+        text1 = (f"Store directory \"{pargs_store_norm}\" was specified by "
+                 "user, it is a directory with path, but it "
+                 "does not exist. Hence it will be created there. ")
+        logger.info(text1 + text2)
+        print(text1 + text2)
+        return pargs_store_norm  # create in the specified, directory with path
+    if (pargs.store == STORE_DIR_DEFAULT and
+            os.path.isdir(STORE_DIR_LASTRESORT)):
+        logger.debug("Store was not found in default local directory. "
+                     "But found an existing store directory in "
+                     f"\"{STORE_DIR_LASTRESORT}\" directory. "
                      "It will be used.")
-        return pargs.store
-    if os.path.isdir(STORE_PATH_LASTRESORT + "/" + pargs.store):
-        logger.debug("Found an existing store dir in "
-                     f"{STORE_PATH_LASTRESORT} dir. "
-                     "It will be used.")
-        return STORE_PATH_LASTRESORT + "/" + pargs.store
-    logger.info("Could not find existing store directory anywhere. "
-                "A new one will be created. "
-                "It will need to be verified.")
-    logger.info("The store directory will be created in the local "
-                f"directory. Consider moving it to {STORE_PATH_LASTRESORT} "
-                "for a more consistent experience.")
-    return pargs.store  # prefer to create in the local directory
+        return STORE_DIR_LASTRESORT
+
+    if pargs.store == os.path.basename(pargs.store):
+        logger.debug(f"Store directory \"{pargs_store_norm}\" is just a name "
+                     "without a path. Already looked locally, but not found "
+                     "locally. So now looking for it in last-resort path.")
+        last_resort = os.path.normpath(
+            STORE_PATH_LASTRESORT + "/" + pargs.store)
+        if os.path.isdir(last_resort):
+            logger.debug("Found an existing store directory in "
+                         f"\"{last_resort}\" directory. It will be used.")
+            return last_resort
+    text1 = ("Could not find existing store directory anywhere. "
+             "A new one will be created. ")
+    logger.info(text1 + text2)
+    print(text1 + text2)
+    return pargs_store_norm  # create in the specified, local dir without path
 
 
 def determine_rooms(room_id) -> list:
@@ -1491,7 +1525,9 @@ if __name__ == "__main__":  # noqa # ignore mccabe if-too-complex
                     "If this option is provided, the provided directory name "
                     "will be used as persistent storage directory instead of "
                     "the default one. Preferably, for multiple executions "
-                    "of this program use the same store for the same device.")
+                    "of this program use the same store for the same device. "
+                    "The store directory can be shared between multiple "
+                    "different devices and users.")
     ap.add_argument("-v", "--verify", required=False, type=str,
                     help="Perform verification. By default, no "
                     "verification is performed. "
