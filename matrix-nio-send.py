@@ -24,15 +24,15 @@ It is a CLI program to be be used from the command line.
 There is no GUI and there are no windows.
 
 Use cases for this program could be
-a) a bot or part of a bot,
-b) to send alerts,
-c) combine it with cron to publish periodic data,
-d) send yourself daily/weekly reminders via a cron job
-e) a trivial way to fire off some instant messages from the command line
-f) to automate sending via programs and scripts
-g) a "blogger" who frequently sends messages and images to the same
+- a bot or part of a bot,
+- to send alerts,
+- combine it with cron to publish periodic data,
+- send yourself daily/weekly reminders via a cron job
+- a trivial way to fire off some instant messages from the command line
+- to automate sending via programs and scripts
+- a "blogger" who frequently sends messages and images to the same
    room(s) could use it
-h) a person could write a diary or run a gratitutde journal by
+- a person could write a diary or run a gratitutde journal by
    sending messages to her/his own room
 
 This program on the first run creates a credentials.json file.
@@ -274,17 +274,17 @@ optional arguments:
 # For Developers
 
 - Don't change tabbing, spacing, or formating as file is automatically
-  linted with autopep8 --aggressive
-- pylama:format=pep8:linters=pep8
+  linted with `autopep8 --aggressive`
+- `pylama:format=pep8:linters=pep8`
 
-# Things to do, things missing
+# Things to do, Things missing
 
 - help me add config file handling
 
 # Final Remarks
 
 - Enjoy!
-- Pull request are welcome
+- Pull requests are welcome
 
 """
 
