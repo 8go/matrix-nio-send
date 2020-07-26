@@ -17,15 +17,15 @@ It is a CLI program to be be used from the command line.
 There is no GUI and there are no windows.
 
 Use cases for this program could be
-a) a bot or part of a bot,
-b) to send alerts,
-c) combine it with cron to publish periodic data,
-d) send yourself daily/weekly reminders via a cron job
-e) a trivial way to fire off some instant messages from the command line
-f) to automate sending via programs and scripts
-g) a "blogger" who frequently sends messages and images to the same
+- a bot or part of a bot,
+- to send alerts,
+- combine it with cron to publish periodic data,
+- send yourself daily/weekly reminders via a cron job
+- a trivial way to fire off some instant messages from the command line
+- to automate sending via programs and scripts
+- a "blogger" who frequently sends messages and images to the same
    room(s) could use it
-h) a person could write a diary or run a gratitutde journal by
+- a person could write a diary or run a gratitutde journal by
    sending messages to her/his own room
 
 This program on the first run creates a credentials.json file.
@@ -65,15 +65,23 @@ On creation the credentials file will always be created in the local
 directory, so the users sees it right away. This is fine if you have
 only one or a few credential files, but for better maintainability
 it is suggested to place your credentials files into directory
-$HOME/.config/matrix-nio-send.py/. When the program looks for
+$HOME/.config/matrix-nio-send/. When the program looks for
 a credentials file it will first look in local directory and then
 as secondary choice it will look in directory
-$HOME/.config/matrix-nio-send.py/.
+$HOME/.config/matrix-nio-send/.
 
 If you want to re-use an existing device id and an existing
 access token, you can do so as well, just manually edit the
 credentials file. However, for end-to-end encryption this will
-not work.
+NOT work.
+
+End-to-end encryption (e2ee) is enabled by default. It cannot be turned off.
+Wherever possible end-to-end encryption will be used. For e2ee to work
+efficiently a `store` directory is needed to store e2ee data persistently.
+The default location for the store directory is a local directory named
+`store`. Alternatively, as a secondary choice the program looks for a store
+directory in $HOME/.local/shared/matrix-nio-send/store/. The user can always
+specify a different location via the --store argument.
 
 The program can accept verification request and verify other devices
 via emojis. Do do so use the --verify option and the program will
@@ -270,4 +278,3 @@ optional arguments:
 
 - Enjoy!
 - Pull request are welcome
-
