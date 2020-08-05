@@ -2,6 +2,26 @@
 https://img.shields.io/badge/built%20with-matrix--nio-brightgreen)](
 https://github.com/poljar/matrix-nio)
 
+***
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; 
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; 
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; 
+
+`matrix-nio-send` is now discontinued because as new features have been
+added such as "listen" the name was no longer appropriate. It has been
+replaced by a new project, in a new repo, named 
+[matrix-commander](https://github.com/8go/matrix-commander). 
+`matrix-commander` is a simple Matrix CLI client that 
+can do everything that `matrix-nio-send` could do 
+and much more, such as listening to and reading of messages, 
+changing device name, and so on. Please follow the link to check 
+out &#x1F535; [matrix-commander](https://github.com/8go/matrix-commander) &#x1F535;.
+
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; 
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; 
+&#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534; &#x1F534;
+***
+
 # matrix-nio-send
 
 - simple but convenient app to send Matrix text messages as well as
@@ -270,11 +290,9 @@ optional arguments:
   linted with autopep8 --aggressive
 - pylama:format=pep8:linters=pep8
 
-# Things to do, things missing
-
-- help me add config file handling
 
 # Final Remarks
 
 - Enjoy!
-- Pull request are welcome
+- Pull request are not accepted in this repo as this project has been discontinued. 
+  Pull requests are welcome in the successor project [matrix-commander](https://github.com/8go/matrix-commander).
